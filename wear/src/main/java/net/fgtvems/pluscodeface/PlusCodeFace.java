@@ -266,16 +266,11 @@ public class PlusCodeFace extends CanvasWatchFaceService {
                 canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
             }
 
-            // Draw H:MM in ambient mode or H:MM:SS in interactive mode.
             long now = System.currentTimeMillis();
             mCalendar.setTimeInMillis(now);
 
-            String text = mAmbient
-                    ? String.format("%d:%02d", mCalendar.get(Calendar.HOUR),
-                    mCalendar.get(Calendar.MINUTE))
-                    : String.format("%d:%02d:%02d", mCalendar.get(Calendar.HOUR),
-                    mCalendar.get(Calendar.MINUTE), mCalendar.get(Calendar.SECOND));
-
+            String text = String.format("%d:%02d",
+                    mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE));
             float y = mYOffset;
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
 
