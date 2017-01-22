@@ -136,7 +136,7 @@ public class PlusCodeFace extends CanvasWatchFaceService {
 
             // TODO: Calculate only once, but update if local changes?
             Locale locale = getResources().getConfiguration().locale;
-            mDateFormat = new SimpleDateFormat("EEE d MMM 'w'ww", locale);
+            mDateFormat = new SimpleDateFormat(resources.getString(R.string.date_format), locale);
         }
 
         @Override
@@ -273,10 +273,16 @@ public class PlusCodeFace extends CanvasWatchFaceService {
                     mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE));
             float y = mYOffset;
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+            y += mTextPaint.descent();
 
+            // Draw date split across lines.
             String dateString = mDateFormat.format(mCalendar.getTime());
-            y += mTextPaint.descent() - mDatePaint.ascent();
-            canvas.drawText(dateString, mXOffset, y, mDatePaint);
+            String[] parts = dateString.split("\n");
+            for (String part : parts) {
+                y -= mDatePaint.ascent();
+                canvas.drawText(part, mXOffset, y, mDatePaint);
+                y += mDatePaint.descent();
+            }
         }
 
         /**
