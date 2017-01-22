@@ -51,10 +51,9 @@ public class PlusCodeFace extends CanvasWatchFaceService {
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
 
     /**
-     * Update rate in milliseconds for interactive mode. We update once a second since seconds are
-     * displayed in interactive mode.
+     * Update rate in milliseconds for interactive mode.
      */
-    private static final long INTERACTIVE_UPDATE_RATE_MS = TimeUnit.SECONDS.toMillis(1);
+    private static final long INTERACTIVE_UPDATE_RATE_MS = 1000;
 
     /**
      * Handler message id for updating the time periodically in interactive mode.
@@ -110,6 +109,8 @@ public class PlusCodeFace extends CanvasWatchFaceService {
          */
         boolean mLowBitAmbient;
         private SimpleDateFormat mDateFormat;
+        private Paint mSecondsPaint;
+        private boolean mIsRound;
 
         @Override
         public void onCreate(SurfaceHolder holder) {
@@ -131,6 +132,10 @@ public class PlusCodeFace extends CanvasWatchFaceService {
             mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
 
             mDatePaint = new Paint(mTextPaint);
+
+            mSecondsPaint = new Paint(mTextPaint);
+            mSecondsPaint.setStrokeCap(Paint.Cap.ROUND);
+            mSecondsPaint.setStrokeWidth(6);
 
             mCalendar = Calendar.getInstance();
 
@@ -195,15 +200,15 @@ public class PlusCodeFace extends CanvasWatchFaceService {
 
             // Load resources that have alternate values for round watches.
             Resources resources = PlusCodeFace.this.getResources();
-            boolean isRound = insets.isRound();
-            mXOffset = resources.getDimension(isRound
+            mIsRound = insets.isRound();
+            mXOffset = resources.getDimension(mIsRound
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
-            float textSize = resources.getDimension(isRound
+            float textSize = resources.getDimension(mIsRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
             mTextPaint.setTextSize(textSize);
 
             mDatePaint.setTextSize(resources.getDimension(
-                    isRound ? R.dimen.date_text_size_round : R.dimen.date_text_size));
+                    mIsRound ? R.dimen.date_text_size_round : R.dimen.date_text_size));
         }
 
         @Override
@@ -270,7 +275,7 @@ public class PlusCodeFace extends CanvasWatchFaceService {
             mCalendar.setTimeInMillis(now);
 
             String text = String.format("%d:%02d",
-                    mCalendar.get(Calendar.HOUR), mCalendar.get(Calendar.MINUTE));
+                    mCalendar.get(Calendar.HOUR_OF_DAY), mCalendar.get(Calendar.MINUTE));
             float y = mYOffset;
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
             y += mTextPaint.descent();
@@ -282,6 +287,23 @@ public class PlusCodeFace extends CanvasWatchFaceService {
                 y -= mDatePaint.ascent();
                 canvas.drawText(part, mXOffset, y, mDatePaint);
                 y += mDatePaint.descent();
+            }
+
+            if (!isInAmbientMode()) {
+                // Draw seconds hand.
+                float secs = (float) mCalendar.get(Calendar.SECOND) +
+                        (float) mCalendar.get(Calendar.MILLISECOND) / 1000f;
+                float secX, secY;
+                if (mIsRound) {
+                    double secRads = (Math.PI * 2 * secs) / 60.0;
+                    // TODO: better calculated inset to avoid the chin.
+                    secX = canvas.getWidth() * (float) (0.5 + Math.sin(secRads) / 2.2);
+                    secY = canvas.getHeight() * (float) (0.5 - Math.cos(secRads) / 2.2);
+                } else {
+                    secY = canvas.getHeight() * 0.1f;
+                    secX = canvas.getWidth() * (float) (0.5 + ((secs - 30.0) / 60.0) * 0.9);
+                }
+                canvas.drawPoint(secX, secY, mSecondsPaint);
             }
         }
 
