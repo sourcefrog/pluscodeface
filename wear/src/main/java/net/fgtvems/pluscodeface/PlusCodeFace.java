@@ -16,24 +16,32 @@
 
 package net.fgtvems.pluscodeface;
 
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.ActivityCompat;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 import android.widget.Toast;
+
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.wearable.Wearable;
 
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
@@ -49,6 +57,7 @@ import java.util.concurrent.TimeUnit;
 public class PlusCodeFace extends CanvasWatchFaceService {
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
+    private GoogleApiClient mGoogleApiClient;
 
     /**
      * Update rate in milliseconds for interactive mode.
@@ -59,6 +68,33 @@ public class PlusCodeFace extends CanvasWatchFaceService {
      * Handler message id for updating the time periodically in interactive mode.
      */
     private static final int MSG_UPDATE_TIME = 0;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        if (mGoogleApiClient == null) {
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addApi(LocationServices.API)
+                    .addApi(Wearable.API)  // used for data layer API
+                    // .addConnectionCallbacks(this)
+                    // .addOnConnectionFailedListener(this)
+                    .build();
+        }
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        int result = super.onStartCommand(intent, flags, startId);
+        mGoogleApiClient.connect();
+        return result;
+    }
+
+    @Override
+    public void onDestroy() {
+        mGoogleApiClient.disconnect();
+        super.onDestroy();
+    }
 
     @Override
     public Engine onCreateEngine() {
@@ -280,6 +316,33 @@ public class PlusCodeFace extends CanvasWatchFaceService {
                     secX = canvas.getWidth() * (float) (0.5 + ((secs - 30.0) / 60.0) * 0.9);
                 }
                 canvas.drawPoint(secX, secY, mSecondsPaint);
+            }
+
+            // TODO: Maybe get location less frequently
+            if (ActivityCompat.checkSelfPermission(PlusCodeFace.this,
+                    Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    || ActivityCompat.checkSelfPermission(PlusCodeFace.this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                Location lastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                if (lastLocation != null) {
+                    String lat = Location.convert(lastLocation.getLatitude(), Location.FORMAT_DEGREES);
+                    String lon = Location.convert(lastLocation.getLongitude(), Location.FORMAT_DEGREES);
+
+                    y -= mDatePaint.ascent();
+                    canvas.drawText(lat, mXOffset, y, mDatePaint);
+                    y += mDatePaint.descent();
+
+                    y -= mDatePaint.ascent();
+                    canvas.drawText(lon, mXOffset, y, mDatePaint);
+                    y += mDatePaint.descent();
+                } else {
+                    y -= mDatePaint.ascent();
+                    canvas.drawText("No location", mXOffset, y, mDatePaint);
+                    y += mDatePaint.descent();
+                }
+            } else {
+                y -= mDatePaint.ascent();
+                canvas.drawText("No location permission", mXOffset, y, mDatePaint);
+                y += mDatePaint.descent();
             }
         }
 
