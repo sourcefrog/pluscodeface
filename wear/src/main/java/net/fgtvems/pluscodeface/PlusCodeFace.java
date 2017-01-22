@@ -36,7 +36,9 @@ import android.view.WindowInsets;
 import android.widget.Toast;
 
 import java.lang.ref.WeakReference;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Locale;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -89,6 +91,7 @@ public class PlusCodeFace extends CanvasWatchFaceService {
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
         Paint mTextPaint;
+        private Paint mDatePaint;
         boolean mAmbient;
         Calendar mCalendar;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -106,6 +109,7 @@ public class PlusCodeFace extends CanvasWatchFaceService {
          * disable anti-aliasing in ambient mode.
          */
         boolean mLowBitAmbient;
+        private SimpleDateFormat mDateFormat;
 
         @Override
         public void onCreate(SurfaceHolder holder) {
@@ -126,7 +130,13 @@ public class PlusCodeFace extends CanvasWatchFaceService {
             mTextPaint = new Paint();
             mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
 
+            mDatePaint = new Paint(mTextPaint);
+
             mCalendar = Calendar.getInstance();
+
+            // TODO: Calculate only once, but update if local changes?
+            Locale locale = getResources().getConfiguration().locale;
+            mDateFormat = new SimpleDateFormat("EEE d MMM 'w'ww", locale);
         }
 
         @Override
@@ -190,8 +200,10 @@ public class PlusCodeFace extends CanvasWatchFaceService {
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
             float textSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
-
             mTextPaint.setTextSize(textSize);
+
+            mDatePaint.setTextSize(resources.getDimension(
+                    isRound ? R.dimen.date_text_size_round : R.dimen.date_text_size));
         }
 
         @Override
@@ -263,7 +275,13 @@ public class PlusCodeFace extends CanvasWatchFaceService {
                     mCalendar.get(Calendar.MINUTE))
                     : String.format("%d:%02d:%02d", mCalendar.get(Calendar.HOUR),
                     mCalendar.get(Calendar.MINUTE), mCalendar.get(Calendar.SECOND));
+
+            float y = mYOffset;
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+
+            String dateString = mDateFormat.format(mCalendar.getTime());
+            y += mTextPaint.descent() - mDatePaint.ascent();
+            canvas.drawText(dateString, mXOffset, y, mDatePaint);
         }
 
         /**
